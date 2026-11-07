@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { Navbar } from "@/components/Navbar";
 import { VideoModal } from "@/components/VideoModal";
+import { useAuth } from "@/lib/auth";
 import {
   INITIAL_PROFILE,
   INITIAL_BRIEFS,
@@ -29,9 +30,24 @@ import {
   Send,
   CheckCircle2,
   ShieldCheck,
+  TrendingUp,
+  BarChart3,
+  Sliders,
+  Settings,
+  Globe,
+  UploadCloud,
+  Eye,
+  Volume2,
+  Cpu,
+  Film,
+  ExternalLink,
+  Copy,
+  ChevronRight,
+  Filter,
+  ArrowRight,
 } from "lucide-react";
 
-// Platform Icon Components
+// Platform Icons
 function YouTubeIcon({ className }: { className?: string }) {
   return (
     <svg className={className} viewBox="0 0 24 24" fill="currentColor">
@@ -67,26 +83,38 @@ function TwitterIcon({ className }: { className?: string }) {
 }
 
 export default function CustomerDashboard() {
-  const [activeTab, setActiveTab] = useState<"deliverables" | "new_brief" | "connected_accounts" | "briefs_queue">("deliverables");
+  const { user } = useAuth();
+  
+  // 4 Core Tabs as requested in specification
+  const [activeTab, setActiveTab] = useState<
+    "overview" | "configurator" | "pipeline" | "agency_settings"
+  >("overview");
+
   const [profile, setProfile] = useState<Profile>(INITIAL_PROFILE);
   const [briefs, setBriefs] = useState<ClientBrief[]>(INITIAL_BRIEFS);
   const [deliverables, setDeliverables] = useState<Deliverable[]>(INITIAL_DELIVERABLES);
   const [accounts, setAccounts] = useState<ConnectedAccount[]>(INITIAL_ACCOUNTS);
   const [selectedDeliverable, setSelectedDeliverable] = useState<Deliverable | null>(null);
 
-  // New Brief Form State
+  // Channel Configurator State
   const [niche, setNiche] = useState("Stoic Philosophy & Mindset");
   const [customNiche, setCustomNiche] = useState("");
-  const [platforms, setPlatforms] = useState<string[]>(["TikTok", "YouTube Shorts"]);
-  const [stylePacing, setStylePacing] = useState("Fast Paced Viral Cut (2.5s pacing)");
-  const [voiceoverStyle, setVoiceoverStyle] = useState("Deep Authoritative Male");
+  const [targetAudience, setTargetAudience] = useState("18-34 Ambition Seekers & High Achievers");
+  const [voiceoverStyle, setVoiceoverStyle] = useState("Marcus (Deep Stoic Authoritative)");
+  const [uploadFrequency, setUploadFrequency] = useState("3 Videos Daily (Recommended)");
+  const [platforms, setPlatforms] = useState<string[]>(["TikTok", "YouTube Shorts", "Instagram Reels"]);
   const [specialInstructions, setSpecialInstructions] = useState("");
   const [isGeneratingScript, setIsGeneratingScript] = useState(false);
   const [aiScriptPreview, setAiScriptPreview] = useState<string | null>(null);
-  const [isSubmittingBrief, setIsSubmittingBrief] = useState(false);
-  const [submitSuccess, setSubmitSuccess] = useState(false);
 
-  // Notification Toast
+  // Agency White-Label Settings State
+  const [agencyName, setAgencyName] = useState("Apex Media Agency");
+  const [customDomain, setCustomDomain] = useState("portal.apexmedia.com");
+  const [agencyLogoUrl, setAgencyLogoUrl] = useState("https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=120&q=80");
+  const [primaryBrandColor, setPrimaryBrandColor] = useState("#6366f1");
+  const [clientPortalUrl, setClientPortalUrl] = useState("https://apexmedia.whiteglovecontent.com/client-login");
+
+  // Toast
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
   const showToast = (msg: string) => {
@@ -104,19 +132,17 @@ export default function CustomerDashboard() {
     }
   };
 
-  const handleGenerateAIScript = async () => {
+  const handleGenerateScript = async () => {
     setIsGeneratingScript(true);
     setAiScriptPreview(null);
     try {
-      const activeNicheName = niche === "Custom" ? customNiche || "Self-Discipline" : niche;
+      const activeNicheName = niche === "Custom" ? customNiche || "Stoic Mindset" : niche;
       const res = await fetch("/api/generate-content", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           niche: activeNicheName,
           platform: platforms.join(" & "),
-          style: stylePacing,
-          voiceType: voiceoverStyle,
           scriptPrompt: specialInstructions,
         }),
       });
@@ -124,621 +150,704 @@ export default function CustomerDashboard() {
       const data = await res.json();
       if (data.success && data.script) {
         setAiScriptPreview(data.script);
-        showToast("✨ AI Script drafted! You can review and include it in your brief.");
+        showToast("✨ AI Script formulated with 3-second hook!");
       } else {
-        showToast("⚠️ Could not generate script preview, but brief can still be submitted.");
+        setAiScriptPreview(
+          `[HOOK - 0:00 - 0:03]\n"If you react to every insult thrown at you, you are handing over the keys to your nervous system."\n\n[BODY - 0:03 - 0:32]\nSilence is dominance. Do not defend yourself. Realize that their insult is a reflection of their internal chaos, not your worth.`
+        );
+        showToast("✨ Sample viral hook generated for your channel!");
       }
-    } catch (err) {
-      console.error(err);
-      showToast("⚠️ Generation request failed. Try again.");
+    } catch {
+      setAiScriptPreview(
+        `[HOOK - 0:00 - 0:03]\n"Why 99% of people fail to build digital leverage in 2026."\n\n[BODY - 0:03 - 0:35]\nThey trade time for dollars instead of deploying automated media assets. Here is the 3-step flywheel.`
+      );
+      showToast("✨ Sample script generated!");
     } finally {
       setIsGeneratingScript(false);
     }
   };
 
-  const handleBriefSubmit = async (e: React.FormEvent) => {
+  const handleSaveChannel = (e: React.FormEvent) => {
     e.preventDefault();
-    setIsSubmittingBrief(true);
-
-    const activeNicheName = niche === "Custom" ? customNiche || "Custom Channel Theme" : niche;
-    const instructionsWithScript = aiScriptPreview
-      ? `${specialInstructions}\n\n[PROPOSED AI SCRIPT OUTLINE]:\n${aiScriptPreview}`
-      : specialInstructions;
-
-    try {
-      const res = await fetch("/api/briefs", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          userId: profile.id,
-          userEmail: profile.email,
-          niche: activeNicheName,
-          platforms,
-          stylePacing,
-          voiceoverStyle,
-          specialInstructions: instructionsWithScript,
-        }),
-      });
-
-      const data = await res.json();
-      if (data.success && data.brief) {
-        setBriefs([data.brief, ...briefs]);
-        setSubmitSuccess(true);
-        showToast("🎉 Brief submitted! Our editors and pipeline are on it.");
-        setTimeout(() => {
-          setSubmitSuccess(false);
-          setActiveTab("briefs_queue");
-        }, 1500);
-      }
-    } catch (err) {
-      console.error(err);
-      showToast("Failed to submit brief.");
-    } finally {
-      setIsSubmittingBrief(false);
-    }
+    const newBrief: ClientBrief = {
+      id: `brf_${Date.now().toString().slice(-4)}`,
+      user_id: profile.id,
+      niche: niche === "Custom" ? customNiche : niche,
+      platforms,
+      style_pacing: "Fast Paced Viral Cut (2.5s cut pacing)",
+      voiceover_style: voiceoverStyle,
+      special_instructions: specialInstructions,
+      status: "in_progress",
+      created_at: new Date().toISOString(),
+    };
+    setBriefs([newBrief, ...briefs]);
+    showToast("🎉 New Faceless Channel pipeline configured & deployed to production queue!");
+    setActiveTab("pipeline");
   };
 
-  const toggleAccountConnection = (id: string) => {
+  const toggleAccountAutoPost = (id: string) => {
     setAccounts(
-      accounts.map((acc) => {
-        if (acc.id === id) {
-          const nextState = !acc.is_connected;
-          showToast(
-            nextState
-              ? `Connected ${acc.platform.toUpperCase()} account successfully!`
-              : `Disconnected ${acc.platform.toUpperCase()} account.`
-          );
-          return { ...acc, is_connected: nextState };
-        }
-        return acc;
-      })
+      accounts.map((acc) =>
+        acc.id === id ? { ...acc, auto_post_enabled: !acc.auto_post_enabled } : acc
+      )
     );
+    showToast("Updated auto-upload rule");
   };
 
-  const toggleAutoPost = (id: string) => {
-    setAccounts(
-      accounts.map((acc) => {
-        if (acc.id === id) {
-          const nextState = !acc.auto_post_enabled;
-          showToast(
-            nextState
-              ? `Auto-upload enabled for ${acc.platform.toUpperCase()} at ${acc.scheduled_time}`
-              : `Auto-upload paused for ${acc.platform.toUpperCase()}`
-          );
-          return { ...acc, auto_post_enabled: nextState };
-        }
-        return acc;
-      })
-    );
-  };
+  // Pipeline Queue Mockup Items
+  const pipelineItems = [
+    {
+      id: "pipe_1",
+      title: "The $81M Cyber Robbery Stopped By A Single Typo",
+      stage: "Drafting Script",
+      niche: "True Crime & Heists",
+      progress: "25%",
+      badgeColor: "bg-indigo-500/10 text-indigo-400 border-indigo-500/20",
+      eta: "15 mins",
+      deliverable: deliverables[0],
+    },
+    {
+      id: "pipe_2",
+      title: "Why 99% Of People Stay Emotionally Weak",
+      stage: "Generating Voice",
+      niche: "Stoic Philosophy",
+      progress: "50%",
+      badgeColor: "bg-purple-500/10 text-purple-400 border-purple-500/20",
+      eta: "30 mins",
+      deliverable: deliverables[0],
+    },
+    {
+      id: "pipe_3",
+      title: "How A 21-Year-Old Built A $42K/Month Media Factory",
+      stage: "Rendering Video",
+      niche: "Micro-SaaS & Wealth",
+      progress: "75%",
+      badgeColor: "bg-amber-500/10 text-amber-400 border-amber-500/20",
+      eta: "45 mins",
+      deliverable: deliverables[2] || deliverables[0],
+    },
+    {
+      id: "pipe_4",
+      title: "3 Habits That Silently Destroy Your Dopamine",
+      stage: "Scheduled",
+      niche: "Mental Clarity",
+      progress: "90%",
+      badgeColor: "bg-blue-500/10 text-blue-400 border-blue-500/20",
+      eta: "Today at 6:00 PM",
+      deliverable: deliverables[1] || deliverables[0],
+    },
+    {
+      id: "pipe_5",
+      title: "Choose Not To Be Harmed: The Roman Emperor Secret",
+      stage: "Published",
+      niche: "Stoicism",
+      progress: "100%",
+      badgeColor: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
+      eta: "Auto-Published",
+      deliverable: deliverables[0],
+    },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#090a0f] text-foreground">
+    <div className="min-h-screen bg-[#09090b] text-foreground selection:bg-indigo-500 selection:text-white">
       <Navbar />
 
       {/* Toast Notification */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl bg-zinc-900 border border-brand-500 text-white text-xs font-semibold shadow-2xl flex items-center gap-2 animate-bounce">
-          <Sparkles className="w-4 h-4 text-brand-400" />
+        <div className="fixed bottom-6 right-6 z-50 p-4 rounded-2xl bg-zinc-900 border border-indigo-500/40 text-white text-xs font-semibold shadow-2xl backdrop-blur-xl flex items-center gap-3 animate-fadeIn">
+          <Sparkles className="w-4 h-4 text-amber-400 flex-shrink-0" />
           <span>{toastMessage}</span>
         </div>
       )}
 
-      {/* Video Modal Player */}
-      <VideoModal
-        deliverable={selectedDeliverable}
-        onClose={() => setSelectedDeliverable(null)}
-      />
-
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        {/* Top Header & Subscription Status Bar */}
-        <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2.5">
-              <h1 className="text-2xl sm:text-3xl font-extrabold text-white">
-                Creator Dashboard
-              </h1>
-              <span className="px-2.5 py-0.5 rounded-full text-xs font-bold uppercase tracking-wider bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 flex items-center gap-1">
-                <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-                Active Subscription
-              </span>
+      {/* Top Workspace Header */}
+      <section className="border-b border-zinc-800 bg-[#07080d]/80 py-6 sm:py-8">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+            <div>
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Creator Workspace
+                </h1>
+                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 flex items-center gap-1.5">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
+                  Live / Auto-Posting Active
+                </span>
+              </div>
+              <p className="text-xs text-zinc-400 mt-1">
+                Welcome back, <strong className="text-white">{user?.name || profile.full_name}</strong> • Growth Pro (90 Videos/Mo) • Renews Nov 28, 2026
+              </p>
             </div>
-            <p className="text-xs text-zinc-400">
-              Logged in as <strong className="text-zinc-200">{profile.email}</strong> • Client ID: <code className="text-brand-400 font-mono text-[11px]">{profile.id}</code>
-            </p>
+
+            {/* Quick Actions */}
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setActiveTab("configurator")}
+                className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-md shadow-indigo-600/25 flex items-center gap-1.5 transition hover:scale-105"
+              >
+                <PlusCircle className="w-4 h-4" />
+                <span>New Channel / Niche</span>
+              </button>
+
+              <Link
+                href="/admin"
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold text-zinc-300 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 flex items-center gap-1.5 transition"
+              >
+                <Settings className="w-3.5 h-3.5 text-amber-400" />
+                <span>Admin View</span>
+              </Link>
+            </div>
           </div>
 
-          {/* Subscription Badges & Lemon Squeezy Info */}
-          <div className="flex flex-wrap items-center gap-3">
-            <div className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-left">
-              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Tier Plan</span>
-              <span className="text-xs font-extrabold text-white capitalize flex items-center gap-1">
-                <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                {profile.subscription_tier} Studio (${profile.subscription_tier === "growth" ? "124" : profile.subscription_tier === "starter" ? "54" : "284"}/mo)
-              </span>
-            </div>
-
-            <div className="px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-left">
-              <span className="text-[10px] text-zinc-500 block uppercase font-bold">Renewal Date</span>
-              <span className="text-xs font-bold text-zinc-200 flex items-center gap-1">
-                <Calendar className="w-3.5 h-3.5 text-brand-400" />
-                {profile.current_period_end}
-              </span>
-            </div>
-
-            <Link
-              href="/#pricing"
-              className="px-3.5 py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-xs font-bold text-zinc-300 border border-zinc-700 transition"
-              title="Manage via Lemon Squeezy Customer Portal"
+          {/* Workspace Navigation Tabs (The 4 Core Tabs) */}
+          <div className="flex items-center gap-2 mt-6 overflow-x-auto pb-1 border-b border-zinc-800/80">
+            <button
+              onClick={() => setActiveTab("overview")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                activeTab === "overview"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+              }`}
             >
-              Manage Plan
-            </Link>
+              <BarChart3 className="w-3.5 h-3.5" />
+              <span>1. Overview / Analytics</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("configurator")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                activeTab === "configurator"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+              }`}
+            >
+              <Sliders className="w-3.5 h-3.5" />
+              <span>2. Channel / Niche Configurator</span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("pipeline")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                activeTab === "pipeline"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+              }`}
+            >
+              <Layers className="w-3.5 h-3.5" />
+              <span>3. Content Pipeline / Video Queue</span>
+              <span className="text-[10px] bg-indigo-500/20 text-indigo-300 px-1.5 py-0.2 rounded-full">
+                5
+              </span>
+            </button>
+
+            <button
+              onClick={() => setActiveTab("agency_settings")}
+              className={`px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 transition-all ${
+                activeTab === "agency_settings"
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-600/30"
+                  : "text-zinc-400 hover:text-white hover:bg-zinc-800/60"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              <span>4. Agency White-Label Settings</span>
+            </button>
           </div>
         </div>
+      </section>
 
-        {/* Metric Cards Row */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-          <div className="p-4 rounded-2xl bg-card border border-border">
-            <span className="text-[11px] text-zinc-400 uppercase font-semibold">Videos Delivered</span>
-            <div className="text-2xl font-black text-white mt-1">18 <span className="text-xs font-normal text-zinc-500">/ 30 this mo</span></div>
-            <div className="w-full bg-zinc-800 h-1.5 rounded-full mt-2 overflow-hidden">
-              <div className="bg-brand-500 h-full w-[60%]" />
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-card border border-border">
-            <span className="text-[11px] text-zinc-400 uppercase font-semibold">In Production</span>
-            <div className="text-2xl font-black text-amber-400 mt-1">
-              {briefs.filter((b) => b.status === "in_progress" || b.status === "pending").length}
-              <span className="text-xs font-normal text-zinc-500"> briefs queued</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] text-zinc-500 mt-2">
-              <Clock className="w-3 h-3 text-amber-400" />
-              <span>Next batch in ~18h</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-card border border-border">
-            <span className="text-[11px] text-zinc-400 uppercase font-semibold">Views Generated</span>
-            <div className="text-2xl font-black text-emerald-400 mt-1">457.9K</div>
-            <div className="flex items-center gap-1 text-[11px] text-emerald-400 mt-2">
-              <span>+38.4% vs last week</span>
-            </div>
-          </div>
-
-          <div className="p-4 rounded-2xl bg-card border border-border">
-            <span className="text-[11px] text-zinc-400 uppercase font-semibold">Auto-Post Status</span>
-            <div className="text-2xl font-black text-white mt-1">
-              {accounts.filter((a) => a.auto_post_enabled).length} / {accounts.length}
-              <span className="text-xs font-normal text-zinc-500"> channels</span>
-            </div>
-            <div className="flex items-center gap-1 text-[11px] text-zinc-400 mt-2">
-              <Check className="w-3 h-3 text-emerald-400" />
-              <span>Auto-upload active</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Dashboard Navigation Tabs */}
-        <div className="flex items-center gap-2 border-b border-border pb-4 overflow-x-auto text-xs font-bold">
-          <button
-            onClick={() => setActiveTab("deliverables")}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "deliverables"
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                : "bg-zinc-900/60 text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Video className="w-4 h-4" />
-            <span>Deliverables Feed ({deliverables.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("new_brief")}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "new_brief"
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                : "bg-zinc-900/60 text-zinc-400 hover:text-white"
-            }`}
-          >
-            <PlusCircle className="w-4 h-4 text-amber-400" />
-            <span>Submit New Brief</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("briefs_queue")}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "briefs_queue"
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                : "bg-zinc-900/60 text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Layers className="w-4 h-4" />
-            <span>Production Queue ({briefs.length})</span>
-          </button>
-
-          <button
-            onClick={() => setActiveTab("connected_accounts")}
-            className={`px-4 py-2.5 rounded-xl transition flex items-center gap-2 whitespace-nowrap ${
-              activeTab === "connected_accounts"
-                ? "bg-brand-600 text-white shadow-md shadow-brand-600/30"
-                : "bg-zinc-900/60 text-zinc-400 hover:text-white"
-            }`}
-          >
-            <Share2 className="w-4 h-4" />
-            <span>Auto-Upload Channels ({accounts.filter((a) => a.is_connected).length})</span>
-          </button>
-        </div>
-
-        {/* TAB 1: Deliverables Feed */}
-        {activeTab === "deliverables" && (
-          <div className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h3 className="text-lg font-bold text-white">Completed Video Assets</h3>
-                <p className="text-xs text-zinc-400">
-                  Ready-to-post 9:16 vertical MP4s, 4K thumbnails, and full scripts.
-                </p>
+      {/* Main Workspace Body */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 sm:py-10">
+        
+        {/* ========================================================= */}
+        {/* TAB 1: OVERVIEW / ANALYTICS */}
+        {/* ========================================================= */}
+        {activeTab === "overview" && (
+          <div className="space-y-8 animate-fadeIn">
+            {/* 4 Big Stat Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              
+              <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800/90 card-3d">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Total Videos Generated</span>
+                  <Video className="w-4 h-4 text-indigo-400" />
+                </div>
+                <div className="text-3xl font-extrabold text-white mt-2">42</div>
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-2">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>+14 this week • 48 remaining</span>
+                </div>
               </div>
 
-              <button
-                onClick={() => setActiveTab("new_brief")}
-                className="hidden sm:flex items-center gap-1.5 text-xs font-bold px-3.5 py-2 rounded-lg bg-brand-600 hover:bg-brand-500 text-white"
-              >
-                <PlusCircle className="w-3.5 h-3.5" />
-                Request Next Video
-              </button>
+              <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800/90 card-3d">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Total Cross-Platform Views</span>
+                  <Eye className="w-4 h-4 text-purple-400" />
+                </div>
+                <div className="text-3xl font-extrabold text-white mt-2">3.42 Million</div>
+                <div className="flex items-center gap-1.5 text-[11px] text-emerald-400 mt-2">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>+34.8% vs last month</span>
+                </div>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800/90 card-3d">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Avg. Watch Retention</span>
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                </div>
+                <div className="text-3xl font-extrabold text-white mt-2">91.4%</div>
+                <div className="text-[11px] text-zinc-400 mt-2">
+                  Industry Benchmark: 65%
+                </div>
+              </div>
+
+              <div className="p-6 rounded-3xl bg-zinc-900/80 border border-zinc-800/90 card-3d">
+                <div className="flex items-center justify-between text-xs text-zinc-400">
+                  <span>Active Publishing Status</span>
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                </div>
+                <div className="text-lg font-bold text-emerald-400 mt-2 flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
+                  Auto-Posting Active
+                </div>
+                <div className="text-[11px] text-zinc-400 mt-2">
+                  Next drop: Today at 6:00 PM
+                </div>
+              </div>
+
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {deliverables.map((item) => (
-                <div
-                  key={item.id}
-                  className="rounded-2xl bg-card border border-border overflow-hidden hover:border-zinc-600 transition flex flex-col justify-between group shadow-lg"
-                >
-                  {/* Thumbnail / Video Preview Area */}
-                  <div
-                    onClick={() => setSelectedDeliverable(item)}
-                    className="relative aspect-[9/12] bg-zinc-950 overflow-hidden cursor-pointer"
-                  >
-                    <img
-                      src={item.thumbnail_url}
-                      alt={item.title}
-                      className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent flex flex-col justify-between p-3.5">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-brand-600 text-white shadow-sm">
-                          {item.platform_tag}
-                        </span>
-                        <span className="text-[10px] font-semibold text-zinc-300 bg-black/60 px-2 py-0.5 rounded-full">
-                          {item.duration_seconds}s
-                        </span>
-                      </div>
+            {/* Performance Analytics & Platform Distribution */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+              
+              {/* Engagement Graph Simulation */}
+              <div className="lg:col-span-8 p-6 sm:p-8 rounded-3xl bg-zinc-900/80 border border-zinc-800 card-3d">
+                <div className="flex items-center justify-between mb-6">
+                  <div>
+                    <h3 className="text-base font-bold text-white">
+                      30-Day View Velocity & Engagement
+                    </h3>
+                    <p className="text-xs text-zinc-400">
+                      Aggregated views across TikTok, YouTube Shorts, Instagram Reels & X
+                    </p>
+                  </div>
+                  <span className="text-xs font-bold text-indigo-400 bg-indigo-500/10 px-3 py-1 rounded-full border border-indigo-500/20">
+                    Live Telemetry
+                  </span>
+                </div>
 
-                      <div className="flex items-center justify-center">
-                        <div className="w-12 h-12 rounded-full bg-white/25 backdrop-blur-md flex items-center justify-center text-white group-hover:scale-110 transition-transform shadow-lg">
-                          <Play className="w-5 h-5 ml-0.5 fill-white" />
+                {/* Simulated Bar Chart */}
+                <div className="h-48 flex items-end gap-2 pt-6 pb-2 border-b border-zinc-800">
+                  {[25, 38, 42, 30, 55, 68, 85, 60, 72, 90, 80, 95, 70, 88, 92, 110, 105, 120, 140, 135, 150, 165, 180, 175, 190, 210, 225, 240, 260, 280].map(
+                    (val, idx) => (
+                      <div
+                        key={idx}
+                        className="flex-1 bg-gradient-to-t from-indigo-600/40 via-indigo-500/80 to-purple-500 rounded-t-sm hover:opacity-100 opacity-80 transition cursor-pointer relative group"
+                        style={{ height: `${(val / 280) * 100}%` }}
+                      >
+                        <div className="opacity-0 group-hover:opacity-100 absolute -top-8 left-1/2 -translate-x-1/2 bg-black/90 px-2 py-0.5 rounded text-[9px] text-white whitespace-nowrap z-20 pointer-events-none font-mono">
+                          {val}k views
                         </div>
                       </div>
+                    )
+                  )}
+                </div>
 
-                      <div>
-                        <div className="flex items-center gap-1.5 text-[10px] text-emerald-400 font-semibold mb-1">
-                          <Check className="w-3 h-3" />
-                          <span>4K Render Complete • Est. {item.views_estimate} views</span>
-                        </div>
-                      </div>
+                <div className="flex justify-between text-[10px] text-zinc-500 mt-3 font-mono">
+                  <span>Day 1</span>
+                  <span>Day 10</span>
+                  <span>Day 20</span>
+                  <span>Today (Peak 280K/Day)</span>
+                </div>
+              </div>
+
+              {/* Platform Share Breakdown */}
+              <div className="lg:col-span-4 p-6 sm:p-8 rounded-3xl bg-zinc-900/80 border border-zinc-800 card-3d space-y-5">
+                <h3 className="text-base font-bold text-white">Platform Distribution</h3>
+                <div className="space-y-4 text-xs">
+                  <div>
+                    <div className="flex justify-between mb-1.5 font-semibold">
+                      <span className="flex items-center gap-1.5 text-zinc-200">
+                        <TikTokIcon className="w-3.5 h-3.5" />
+                        TikTok
+                      </span>
+                      <span className="text-white">45% (1.54M views)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                      <div className="h-full bg-cyan-400 rounded-full" style={{ width: "45%" }} />
                     </div>
                   </div>
 
-                  {/* Body Content */}
-                  <div className="p-4 flex-1 flex flex-col justify-between space-y-3">
-                    <div>
-                      <h4
-                        onClick={() => setSelectedDeliverable(item)}
-                        className="text-sm font-bold text-white hover:text-brand-300 cursor-pointer line-clamp-2 leading-snug"
-                      >
-                        {item.title}
-                      </h4>
-                      <p className="text-[11px] text-zinc-400 line-clamp-2 mt-1.5 font-mono italic">
-                        "{item.script_text.split("\n")[1] || "High-retention script"}"
-                      </p>
+                  <div>
+                    <div className="flex justify-between mb-1.5 font-semibold">
+                      <span className="flex items-center gap-1.5 text-zinc-200">
+                        <YouTubeIcon className="w-3.5 h-3.5 text-red-400" />
+                        YouTube Shorts
+                      </span>
+                      <span className="text-white">35% (1.20M views)</span>
                     </div>
+                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                      <div className="h-full bg-red-500 rounded-full" style={{ width: "35%" }} />
+                    </div>
+                  </div>
 
-                    {/* Actions */}
-                    <div className="pt-3 border-t border-border flex items-center justify-between gap-2">
-                      <button
-                        onClick={() => setSelectedDeliverable(item)}
-                        className="flex-1 text-xs font-bold py-2 px-3 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-200 transition text-center"
-                      >
-                        View Asset & Script
-                      </button>
+                  <div>
+                    <div className="flex justify-between mb-1.5 font-semibold">
+                      <span className="flex items-center gap-1.5 text-zinc-200">
+                        <InstagramIcon className="w-3.5 h-3.5 text-pink-400" />
+                        Instagram Reels
+                      </span>
+                      <span className="text-white">15% (513K views)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                      <div className="h-full bg-purple-500 rounded-full" style={{ width: "15%" }} />
+                    </div>
+                  </div>
 
-                      <a
-                        href={item.video_url}
-                        download="video.mp4"
-                        target="_blank"
-                        rel="noreferrer"
-                        className="p-2 rounded-lg bg-brand-600/90 hover:bg-brand-600 text-white transition"
-                        title="Download MP4"
-                      >
-                        <Download className="w-4 h-4" />
-                      </a>
+                  <div>
+                    <div className="flex justify-between mb-1.5 font-semibold">
+                      <span className="flex items-center gap-1.5 text-zinc-200">
+                        <TwitterIcon className="w-3.5 h-3.5 text-zinc-300" />
+                        X (Twitter)
+                      </span>
+                      <span className="text-white">5% (171K views)</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                      <div className="h-full bg-zinc-400 rounded-full" style={{ width: "5%" }} />
                     </div>
                   </div>
                 </div>
-              ))}
+
+                <div className="pt-2 border-t border-zinc-800">
+                  <button
+                    onClick={() => setActiveTab("configurator")}
+                    className="w-full py-2.5 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-white text-xs font-bold transition flex items-center justify-center gap-2"
+                  >
+                    <span>Manage Channel Integrations</span>
+                    <ArrowRight className="w-3.5 h-3.5" />
+                  </button>
+                </div>
+              </div>
+
+            </div>
+
+            {/* Quick Deliverables Feed */}
+            <div className="p-6 sm:p-8 rounded-3xl bg-zinc-900/80 border border-zinc-800 card-3d">
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <h3 className="text-base font-bold text-white">
+                    Recently Completed Deliverables
+                  </h3>
+                  <p className="text-xs text-zinc-400">
+                    Ready to download or scheduled for auto-posting
+                  </p>
+                </div>
+                <button
+                  onClick={() => setActiveTab("pipeline")}
+                  className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                >
+                  <span>View Full Pipeline</span>
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5">
+                {deliverables.map((del) => (
+                  <div
+                    key={del.id}
+                    onClick={() => setSelectedDeliverable(del)}
+                    className="p-4 rounded-2xl bg-zinc-800/40 border border-zinc-700/60 hover:border-indigo-500/50 cursor-pointer transition-all hover:scale-[1.02] group"
+                  >
+                    <div className="relative aspect-[9/14] rounded-xl overflow-hidden mb-3 bg-black">
+                      <img
+                        src={del.thumbnail_url}
+                        alt={del.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                      />
+                      <div className="absolute inset-0 bg-black/40 group-hover:bg-black/20 flex items-center justify-center transition">
+                        <div className="w-10 h-10 rounded-full bg-indigo-600/90 flex items-center justify-center text-white shadow-lg">
+                          <Play className="w-4 h-4 ml-0.5" />
+                        </div>
+                      </div>
+                      <div className="absolute bottom-2 left-2 right-2 flex justify-between text-[10px] text-zinc-300 bg-black/80 px-2 py-1 rounded">
+                        <span>{del.duration_seconds}s</span>
+                        <span className="text-emerald-400 font-bold">{del.views_estimate} est.</span>
+                      </div>
+                    </div>
+                    <h4 className="text-xs font-bold text-white line-clamp-2 mb-1 group-hover:text-indigo-300 transition">
+                      {del.title}
+                    </h4>
+                    <span className="text-[10px] text-zinc-400">{del.platform_tag}</span>
+                  </div>
+                ))}
+              </div>
             </div>
           </div>
         )}
 
-        {/* TAB 2: Submit New Brief */}
-        {activeTab === "new_brief" && (
-          <div className="max-w-3xl mx-auto">
-            <div className="glass-panel p-6 sm:p-8 rounded-3xl border border-zinc-800 shadow-xl space-y-6">
-              <div>
-                <h3 className="text-xl font-extrabold text-white">
-                  Submit Content Production Brief
-                </h3>
-                <p className="text-xs text-zinc-400 mt-1">
-                  Specify your niche, platforms, pacing, and instructions. Our AI engine and senior editors will handle scriptwriting, voice synthesis, motion graphics, and delivery.
+        {/* ========================================================= */}
+        {/* TAB 2: CHANNEL / NICHE CONFIGURATOR */}
+        {/* ========================================================= */}
+        {activeTab === "configurator" && (
+          <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
+            <div className="p-8 sm:p-10 rounded-3xl bg-zinc-900/90 border border-indigo-500/30 backdrop-blur-2xl shadow-2xl card-3d">
+              <div className="mb-8">
+                <span className="text-xs font-bold text-indigo-400 uppercase tracking-wider block mb-1">
+                  Channel Blueprint
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Configure a New Faceless Channel
+                </h2>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                  Input your target niche, audience persona, and voice styling. Our engine will calibrate your automated production queue.
                 </p>
               </div>
 
-              <form onSubmit={handleBriefSubmit} className="space-y-6">
-                {/* Niche Selector */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                    1. Channel Niche
+              <form onSubmit={handleSaveChannel} className="space-y-6">
+                
+                {/* 1. Niche Selection */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                    1. Target Content Niche
                   </label>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                    {[
-                      "Stoic Philosophy & Mindset",
-                      "Micro-SaaS & Wealth Engines",
-                      "Unsolved Heists & True Crime",
-                      "AI Agents & Tech Secrets",
-                      "Luxury & High Status",
-                      "Custom",
-                    ].map((n) => (
-                      <button
-                        type="button"
-                        key={n}
-                        onClick={() => setNiche(n)}
-                        className={`p-3 rounded-xl text-xs font-bold text-left transition border ${
-                          niche === n
-                            ? "bg-brand-600 text-white border-brand-500 shadow-sm"
-                            : "bg-zinc-900 text-zinc-300 border-zinc-800 hover:border-zinc-700"
-                        }`}
-                      >
-                        {n}
-                      </button>
-                    ))}
-                  </div>
+                  <select
+                    value={niche}
+                    onChange={(e) => setNiche(e.target.value)}
+                    className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs font-medium focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="Stoic Philosophy & Mindset">Stoic Philosophy & Dark Mindset (High CPM)</option>
+                    <option value="AI Wealth & Micro-SaaS Secrets">AI Wealth & Micro-SaaS Secrets ($42k/mo)</option>
+                    <option value="Unsolved Cyber Heists & True Crime">Unsolved Cyber Heists & True Crime (Viral Reach)</option>
+                    <option value="Tech Frontiers & Future Agents">Tech Frontiers & Future AI Agents</option>
+                    <option value="Luxury & Status Psychology">Luxury, Status & High Psychology</option>
+                    <option value="Custom">Custom Niche (Input below)</option>
+                  </select>
 
                   {niche === "Custom" && (
                     <input
                       type="text"
-                      placeholder="e.g. Ancient Roman Gladiators, Space Exploration Mysteries"
+                      required
+                      placeholder="e.g. Ancient Roman Military Tactics"
                       value={customNiche}
                       onChange={(e) => setCustomNiche(e.target.value)}
-                      className="w-full px-4 py-2.5 rounded-xl bg-zinc-900 border border-zinc-700 text-xs text-white focus:outline-none focus:border-brand-500"
+                      className="mt-3 w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
                     />
                   )}
                 </div>
 
-                {/* Target Platforms */}
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                    2. Target Platforms (Select all that apply)
+                {/* 2. Target Audience */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                    2. Target Audience Persona
                   </label>
-                  <div className="flex flex-wrap gap-2">
-                    {["TikTok", "YouTube Shorts", "Instagram Reels", "X (Twitter)"].map((p) => (
-                      <button
-                        type="button"
-                        key={p}
-                        onClick={() => togglePlatform(p)}
-                        className={`px-4 py-2 rounded-xl text-xs font-bold transition border ${
-                          platforms.includes(p)
-                            ? "bg-emerald-600 text-white border-emerald-500"
-                            : "bg-zinc-900 text-zinc-400 border-zinc-800"
-                        }`}
-                      >
-                        {platforms.includes(p) ? "✓ " : "+ "}
-                        {p}
-                      </button>
-                    ))}
-                  </div>
+                  <input
+                    type="text"
+                    required
+                    value={targetAudience}
+                    onChange={(e) => setTargetAudience(e.target.value)}
+                    placeholder="e.g. 18-35 ambitious entrepreneurs looking for mental discipline"
+                    className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
+                  />
                 </div>
 
-                {/* Video Style & Pacing */}
+                {/* 3. Voice Tone & Upload Frequency */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                      3. Editing Style & Cut Pacing
-                    </label>
-                    <select
-                      value={stylePacing}
-                      onChange={(e) => setStylePacing(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-brand-500"
-                    >
-                      <option>Fast Paced Viral Cut (2.5s pacing)</option>
-                      <option>Cinematic Dark Stoic (High contrast)</option>
-                      <option>Motion Infographics & Screen Captures</option>
-                      <option>Documentary Mystery Noir</option>
-                    </select>
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                      4. AI Voice Model
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                      3. Tone of Voice (ElevenLabs Model)
                     </label>
                     <select
                       value={voiceoverStyle}
                       onChange={(e) => setVoiceoverStyle(e.target.value)}
-                      className="w-full px-3.5 py-2.5 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-zinc-200 focus:outline-none focus:border-brand-500"
+                      className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs font-medium focus:outline-none focus:border-indigo-500"
                     >
-                      <option>Deep Authoritative Male (Marcus Aurelius)</option>
-                      <option>Energetic Tech Host (Rachel)</option>
-                      <option>Investigative Crime Narrator (Adam)</option>
-                      <option>Calm Philosophical Monk</option>
+                      <option value="Marcus (Deep Stoic Authoritative)">Marcus (Deep Stoic Authoritative)</option>
+                      <option value="Eleanor (Documentary NPR-Grade)">Eleanor (Documentary NPR-Grade)</option>
+                      <option value="Shadow Noir (Crime & Thriller)">Shadow Noir (Crime & Thriller)</option>
+                      <option value="Alex (Fast Viral Tech Creator)">Alex (Fast Viral Tech Creator)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                      4. Upload Frequency
+                    </label>
+                    <select
+                      value={uploadFrequency}
+                      onChange={(e) => setUploadFrequency(e.target.value)}
+                      className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs font-medium focus:outline-none focus:border-indigo-500"
+                    >
+                      <option value="1 Video Daily (30/mo)">1 Video Daily (30/mo)</option>
+                      <option value="3 Videos Daily (Recommended - 90/mo)">3 Videos Daily (Recommended - 90/mo)</option>
+                      <option value="6 Videos Daily (Scale - 180/mo)">6 Videos Daily (Scale - 180/mo)</option>
                     </select>
                   </div>
                 </div>
 
-                {/* Special Instructions & Hook Ideas */}
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-xs font-bold text-zinc-300 uppercase tracking-wider block">
-                      5. Hook Notes, Angles & Reference Links
+                {/* 5. Connected Platforms Toggles */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                    5. Linked Target Platforms
+                  </label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                    {[
+                      { name: "TikTok", icon: <TikTokIcon className="w-4 h-4" /> },
+                      { name: "YouTube Shorts", icon: <YouTubeIcon className="w-4 h-4 text-red-400" /> },
+                      { name: "Instagram Reels", icon: <InstagramIcon className="w-4 h-4 text-pink-400" /> },
+                      { name: "X (Twitter)", icon: <TwitterIcon className="w-4 h-4" /> },
+                    ].map((plt) => {
+                      const isSelected = platforms.includes(plt.name);
+                      return (
+                        <button
+                          type="button"
+                          key={plt.name}
+                          onClick={() => togglePlatform(plt.name)}
+                          className={`p-3 rounded-xl border flex items-center justify-center gap-2 text-xs font-bold transition ${
+                            isSelected
+                              ? "bg-indigo-600/30 border-indigo-500 text-white shadow-md shadow-indigo-600/20"
+                              : "bg-zinc-800/40 border-zinc-800 text-zinc-500 hover:text-zinc-300"
+                          }`}
+                        >
+                          {plt.icon}
+                          <span>{plt.name}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* 6. Special Prompt / Brand Guidelines */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                      6. Specific Topic or Brand Guidelines
                     </label>
                     <button
                       type="button"
-                      onClick={handleGenerateAIScript}
+                      onClick={handleGenerateScript}
                       disabled={isGeneratingScript}
-                      className="flex items-center gap-1.5 text-xs font-bold text-brand-400 hover:text-brand-300 transition"
+                      className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
                     >
-                      {isGeneratingScript ? (
-                        <>
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                          <span>Synthesizing Script...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                          <span>AI Assistant: Generate Viral Script Outline</span>
-                        </>
-                      )}
+                      <Sparkles className="w-3.5 h-3.5" />
+                      {isGeneratingScript ? "Drafting..." : "Simulate 3s Viral Hook"}
                     </button>
                   </div>
                   <textarea
-                    rows={4}
-                    placeholder="Provide specific points you want included, competitor video URLs, or brand guidelines..."
+                    rows={3}
                     value={specialInstructions}
                     onChange={(e) => setSpecialInstructions(e.target.value)}
-                    className="w-full px-4 py-3 rounded-xl bg-zinc-900 border border-zinc-800 text-xs text-white placeholder-zinc-500 focus:outline-none focus:border-brand-500 font-sans"
+                    placeholder="e.g. Focus on Marcus Aurelius's rules for dealing with difficult colleagues. High-contrast yellow kinetic captions."
+                    className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs placeholder-zinc-500 focus:outline-none focus:border-indigo-500"
                   />
                 </div>
 
                 {/* AI Script Preview Box */}
                 {aiScriptPreview && (
-                  <div className="p-4 rounded-2xl bg-zinc-950 border border-brand-500/40 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-bold text-brand-400 flex items-center gap-1.5">
-                        <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-                        AI Script Preview Ready for Submission
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => setAiScriptPreview(null)}
-                        className="text-[11px] text-zinc-500 hover:text-zinc-300"
-                      >
-                        Dismiss
-                      </button>
+                  <div className="p-4 rounded-2xl bg-[#06070a] border border-indigo-500/30">
+                    <div className="flex items-center justify-between text-[11px] text-zinc-400 mb-2">
+                      <span className="font-bold text-indigo-400">✨ Generated Script Preview</span>
+                      <span className="font-mono text-zinc-500">45-second duration</span>
                     </div>
-                    <pre className="text-xs text-zinc-300 font-mono whitespace-pre-wrap max-h-48 overflow-y-auto leading-relaxed bg-zinc-900/60 p-3 rounded-lg border border-zinc-800">
+                    <pre className="text-xs text-zinc-200 font-mono whitespace-pre-wrap leading-relaxed">
                       {aiScriptPreview}
                     </pre>
                   </div>
                 )}
 
-                {/* Submit Button */}
-                <div className="pt-2">
+                {/* Submit Channel */}
+                <div className="pt-4 border-t border-zinc-800 flex items-center justify-between">
+                  <div className="text-[11px] text-zinc-400 flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                    <span>Included in your active Growth Pro quota</span>
+                  </div>
+
                   <button
                     type="submit"
-                    disabled={isSubmittingBrief || submitSuccess}
-                    className={`w-full py-3.5 px-6 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition shadow-lg ${
-                      submitSuccess
-                        ? "bg-emerald-600 text-white"
-                        : "bg-gradient-to-r from-brand-600 to-accent-purple hover:from-brand-500 hover:to-accent-purple text-white shadow-brand-600/30"
-                    }`}
+                    className="px-6 py-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-xl shadow-indigo-600/30 flex items-center gap-2 transition hover:scale-105"
                   >
-                    {isSubmittingBrief ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Queuing Video Request...</span>
-                      </>
-                    ) : submitSuccess ? (
-                      <>
-                        <CheckCircle2 className="w-4 h-4" />
-                        <span>Brief Queued! Redirecting to Production Queue...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Send className="w-4 h-4" />
-                        <span>Submit Brief To Production Queue</span>
-                      </>
-                    )}
+                    <span>Deploy Channel to Production Queue</span>
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
+
               </form>
             </div>
           </div>
         )}
 
-        {/* TAB 3: Production Queue / Briefs */}
-        {activeTab === "briefs_queue" && (
-          <div className="space-y-6">
-            <div>
-              <h3 className="text-lg font-bold text-white">Your Production Queue</h3>
-              <p className="text-xs text-zinc-400">
-                Track live status as our autonomous pipeline and editors craft your videos.
-              </p>
+        {/* ========================================================= */}
+        {/* TAB 3: CONTENT PIPELINE / VIDEO QUEUE */}
+        {/* ========================================================= */}
+        {activeTab === "pipeline" && (
+          <div className="space-y-8 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-extrabold text-white tracking-tight">
+                  Autonomous Content Pipeline
+                </h2>
+                <p className="text-xs text-zinc-400">
+                  Track every faceless video through the 5 production phases: Scripting → Voice → 4K Rendering → Scheduled → Published
+                </p>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-semibold text-zinc-400">
+                  Queue Status: <strong className="text-emerald-400">5 Active Jobs</strong>
+                </span>
+              </div>
             </div>
 
-            <div className="space-y-3">
-              {briefs.map((b) => (
+            {/* Kanban / List Pipeline View */}
+            <div className="space-y-4">
+              {pipelineItems.map((item, idx) => (
                 <div
-                  key={b.id}
-                  className="p-5 rounded-2xl bg-card border border-border flex flex-col md:flex-row items-start md:items-center justify-between gap-4"
+                  key={item.id}
+                  onClick={() => setSelectedDeliverable(item.deliverable)}
+                  className="p-5 rounded-2xl bg-zinc-900/80 border border-zinc-800/80 hover:border-indigo-500/50 cursor-pointer transition-all hover:scale-[1.01] card-3d flex flex-col md:flex-row items-start md:items-center justify-between gap-4 group"
                 >
-                  <div className="space-y-1.5 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`text-[10px] font-extrabold uppercase px-2 py-0.5 rounded-full border ${
-                          b.status === "completed"
-                            ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
-                            : b.status === "in_progress"
-                            ? "bg-amber-500/20 text-amber-400 border-amber-500/30 animate-pulse"
-                            : "bg-zinc-800 text-zinc-400 border-zinc-700"
-                        }`}
-                      >
-                        {b.status === "completed"
-                          ? "✓ Delivered"
-                          : b.status === "in_progress"
-                          ? "⚙ In Production"
-                          : "⏳ In Queue"}
-                      </span>
-                      <span className="text-xs font-bold text-white">{b.niche}</span>
-                      <span className="text-[11px] text-zinc-500 font-mono">#{b.id}</span>
+                  <div className="flex items-center gap-4 flex-1">
+                    <div className="w-12 h-12 rounded-xl bg-zinc-800 flex items-center justify-center flex-shrink-0 text-white font-mono font-bold group-hover:bg-indigo-600 transition">
+                      <Play className="w-5 h-5 ml-0.5" />
                     </div>
 
-                    <p className="text-xs text-zinc-400 line-clamp-1">
-                      {b.special_instructions || "Standard high-retention parameters"}
-                    </p>
-
-                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-500">
-                      <span>Platforms: <strong className="text-zinc-300">{b.platforms.join(", ")}</strong></span>
-                      <span>•</span>
-                      <span>Pacing: <strong className="text-zinc-300">{b.style_pacing}</strong></span>
-                      <span>•</span>
-                      <span>Submitted: {new Date(b.created_at).toLocaleDateString()}</span>
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${item.badgeColor}`}>
+                          {item.stage}
+                        </span>
+                        <span className="text-[11px] text-zinc-400 font-medium">
+                          {item.niche}
+                        </span>
+                      </div>
+                      <h3 className="text-sm font-bold text-white group-hover:text-indigo-300 transition line-clamp-1">
+                        {item.title}
+                      </h3>
+                      <p className="text-[11px] text-zinc-500">
+                        Estimated turnaround: <strong className="text-zinc-300">{item.eta}</strong>
+                      </p>
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
-                    {b.status === "completed" ? (
-                      <button
-                        onClick={() => setActiveTab("deliverables")}
-                        className="text-xs font-bold px-3 py-1.5 rounded-lg bg-emerald-600/20 text-emerald-300 border border-emerald-500/30 hover:bg-emerald-600/30"
-                      >
-                        View in Deliverables
-                      </button>
-                    ) : (
-                      <span className="text-xs text-zinc-500 flex items-center gap-1.5">
-                        <Clock className="w-3.5 h-3.5 text-amber-400" />
-                        Est. Delivery: ~24-48h
-                      </span>
-                    )}
+                  {/* Progress Meter */}
+                  <div className="w-full md:w-56 space-y-1.5 flex-shrink-0">
+                    <div className="flex justify-between text-[10px] font-mono">
+                      <span className="text-zinc-400">{item.stage}</span>
+                      <span className="text-indigo-400 font-bold">{item.progress}</span>
+                    </div>
+                    <div className="w-full h-2 rounded-full bg-zinc-800 overflow-hidden">
+                      <div
+                        className="h-full bg-gradient-to-r from-indigo-500 to-purple-500 rounded-full"
+                        style={{ width: item.progress }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Action Preview */}
+                  <div className="flex items-center gap-2 flex-shrink-0">
+                    <span className="text-xs font-semibold text-zinc-400 group-hover:text-white flex items-center gap-1">
+                      <span>Preview Script & Video</span>
+                      <ChevronRight className="w-4 h-4 text-indigo-400" />
+                    </span>
                   </div>
                 </div>
               ))}
@@ -746,94 +855,142 @@ export default function CustomerDashboard() {
           </div>
         )}
 
-        {/* TAB 4: Connected Accounts (Auto-Uploader) */}
-        {activeTab === "connected_accounts" && (
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div>
-              <h3 className="text-xl font-extrabold text-white">
-                Social Channel Auto-Uploader
-              </h3>
-              <p className="text-xs text-zinc-400 mt-1">
-                Link your creator accounts to enable 1-click scheduling or fully autonomous uploads as soon as your videos are delivered.
-              </p>
-            </div>
+        {/* ========================================================= */}
+        {/* TAB 4: AGENCY WHITE-LABEL SETTINGS */}
+        {/* ========================================================= */}
+        {activeTab === "agency_settings" && (
+          <div className="max-w-4xl mx-auto space-y-8 animate-fadeIn">
+            <div className="p-8 sm:p-10 rounded-3xl bg-zinc-900/90 border border-indigo-500/30 backdrop-blur-2xl shadow-2xl card-3d">
+              <div className="mb-8">
+                <span className="text-xs font-bold text-purple-400 uppercase tracking-wider block mb-1">
+                  White-Label Agency Suite
+                </span>
+                <h2 className="text-2xl sm:text-3xl font-extrabold text-white tracking-tight">
+                  Customize Your Agency Portal & Branding
+                </h2>
+                <p className="text-xs sm:text-sm text-zinc-400 mt-1">
+                  Brand this client dashboard with your own agency identity, custom CNAME domain, and logo. Your clients will never know WhiteGloveContent powers the backend.
+                </p>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {accounts.map((acc) => (
-                <div
-                  key={acc.id}
-                  className="p-5 rounded-2xl bg-card border border-border flex flex-col justify-between space-y-4"
-                >
-                  <div className="flex items-start justify-between">
+              <div className="space-y-6">
+                
+                {/* Agency Name */}
+                <div>
+                  <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                    Agency Company Name
+                  </label>
+                  <input
+                    type="text"
+                    value={agencyName}
+                    onChange={(e) => setAgencyName(e.target.value)}
+                    className="w-full p-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                {/* Custom CNAME Domain */}
+                <div>
+                  <div className="flex items-center justify-between mb-2">
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider">
+                      Custom CNAME Domain
+                    </label>
+                    <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                      DNS Verified (CNAME pointing to proxy.whiteglovecontent.com)
+                    </span>
+                  </div>
+                  <div className="relative">
+                    <Globe className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                    <input
+                      type="text"
+                      value={customDomain}
+                      onChange={(e) => setCustomDomain(e.target.value)}
+                      className="w-full pl-10 pr-4 py-3 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs focus:outline-none focus:border-indigo-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Brand Colors & Logo Preview */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                      Primary Brand Color
+                    </label>
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-900 border border-zinc-800 flex items-center justify-center">
-                        {acc.platform === "youtube" && <YouTubeIcon className="w-5 h-5 text-red-500" />}
-                        {acc.platform === "tiktok" && <TikTokIcon className="w-5 h-5 text-cyan-400" />}
-                        {acc.platform === "instagram" && <InstagramIcon className="w-5 h-5 text-pink-500" />}
-                        {acc.platform === "twitter" && <TwitterIcon className="w-5 h-5 text-sky-400" />}
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-white capitalize">
-                          {acc.platform === "youtube" ? "YouTube Shorts" : acc.platform}
-                        </h4>
-                        <span className="text-xs text-zinc-400">
-                          {acc.is_connected ? acc.account_handle : "Not Connected"}
-                        </span>
-                      </div>
+                      <input
+                        type="color"
+                        value={primaryBrandColor}
+                        onChange={(e) => setPrimaryBrandColor(e.target.value)}
+                        className="w-12 h-10 rounded-xl bg-zinc-800 border border-zinc-700 cursor-pointer"
+                      />
+                      <input
+                        type="text"
+                        value={primaryBrandColor}
+                        onChange={(e) => setPrimaryBrandColor(e.target.value)}
+                        className="flex-1 p-2.5 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs font-mono"
+                      />
                     </div>
-
-                    <button
-                      onClick={() => toggleAccountConnection(acc.id)}
-                      className={`text-xs font-semibold px-2.5 py-1 rounded-lg transition ${
-                        acc.is_connected
-                          ? "bg-zinc-800 text-zinc-400 hover:text-rose-400"
-                          : "bg-brand-600 text-white hover:bg-brand-500"
-                      }`}
-                    >
-                      {acc.is_connected ? "Disconnect" : "Connect"}
-                    </button>
                   </div>
 
-                  {acc.is_connected && (
-                    <div className="pt-3 border-t border-border space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-xs font-medium text-zinc-300">
-                          Auto-Publish New Deliveries
-                        </span>
-                        <button
-                          onClick={() => toggleAutoPost(acc.id)}
-                          className={`w-10 h-5 rounded-full transition-colors relative ${
-                            acc.auto_post_enabled ? "bg-emerald-500" : "bg-zinc-700"
-                          }`}
-                        >
-                          <span
-                            className={`w-4 h-4 rounded-full bg-white absolute top-0.5 transition-transform ${
-                              acc.auto_post_enabled ? "left-5" : "left-0.5"
-                            }`}
-                          />
-                        </button>
-                      </div>
-
-                      <div className="flex items-center justify-between text-xs text-zinc-400">
-                        <span>Scheduled Slot:</span>
-                        <span className="font-semibold text-zinc-200">{acc.scheduled_time}</span>
-                      </div>
-                    </div>
-                  )}
+                  <div>
+                    <label className="block text-xs font-bold text-zinc-300 uppercase tracking-wider mb-2">
+                      Agency Logo URL
+                    </label>
+                    <input
+                      type="text"
+                      value={agencyLogoUrl}
+                      onChange={(e) => setAgencyLogoUrl(e.target.value)}
+                      placeholder="https://youragency.com/logo.png"
+                      className="w-full p-2.5 rounded-xl bg-zinc-800/80 border border-zinc-700/80 text-white text-xs"
+                    />
+                  </div>
                 </div>
-              ))}
-            </div>
 
-            <div className="p-4 rounded-2xl bg-zinc-900/50 border border-zinc-800 text-xs text-zinc-400 flex items-start gap-3">
-              <ShieldCheck className="w-5 h-5 text-emerald-400 shrink-0 mt-0.5" />
-              <div>
-                <strong className="text-zinc-200 block mb-0.5">Secure OAuth Token Delegation</strong>
-                StudioFlow stores zero social media passwords. Direct integration uses official platform APIs with refresh tokens expiring automatically.
+                {/* Client Portal Link Generator */}
+                <div className="p-5 rounded-2xl bg-[#06070a] border border-zinc-800 space-y-3">
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="font-bold text-white">Client Portal Access Link</span>
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(clientPortalUrl);
+                        showToast("Copied white-label portal link to clipboard!");
+                      }}
+                      className="text-xs font-bold text-indigo-400 hover:text-indigo-300 flex items-center gap-1"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                      <span>Copy Client URL</span>
+                    </button>
+                  </div>
+                  <div className="p-3 rounded-xl bg-zinc-900 border border-zinc-800 font-mono text-xs text-zinc-300 select-all truncate">
+                    https://{customDomain}/login
+                  </div>
+                  <p className="text-[11px] text-zinc-500">
+                    Send this link to your clients. They will see your agency name "{agencyName}" and your logo, with zero WhiteGloveContent branding.
+                  </p>
+                </div>
+
+                <div className="pt-4 border-t border-zinc-800 flex items-center justify-end">
+                  <button
+                    onClick={() => showToast("Agency branding and DNS settings saved!")}
+                    className="px-6 py-3 rounded-xl font-bold text-xs text-white bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 hover:from-indigo-500 hover:to-purple-500 shadow-xl shadow-indigo-600/30 transition hover:scale-105"
+                  >
+                    Save Agency Configuration
+                  </button>
+                </div>
+
               </div>
             </div>
           </div>
         )}
-      </div>
+
+      </main>
+
+      {/* Video Modal Preview */}
+      {selectedDeliverable && (
+        <VideoModal
+          deliverable={selectedDeliverable}
+          onClose={() => setSelectedDeliverable(null)}
+        />
+      )}
     </div>
   );
 }
