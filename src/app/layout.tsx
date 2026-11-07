@@ -1,6 +1,8 @@
 import "./globals.css";
 import type { Metadata } from "next";
 import localFont from "next/font/local";
+import { AuthProvider } from "@/lib/auth";
+import { AuthModal } from "@/components/AuthModal";
 
 const geistSans = localFont({
   src: "./fonts/GeistVF.woff",
@@ -14,9 +16,9 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "StudioFlow | Done-For-You Faceless Video Production Agency",
+  title: "WhiteGloveContent | Done-For-You Faceless Video Automation & Growth",
   description:
-    "Subscription-based digital media studio delivering done-for-you faceless video creation, viral scripts, AI voiceovers, 4K editing, and social auto-uploading starting at $54/mo.",
+    "Subscription-based digital media studio delivering done-for-you faceless video creation, viral scripts, hyper-realistic AI voiceovers, 4K editing, and social auto-uploading starting at $54/mo.",
   keywords: [
     "faceless video agency",
     "done for you shorts",
@@ -24,6 +26,7 @@ export const metadata: Metadata = {
     "youtube shorts studio",
     "lemon squeezy subscription",
     "ai voiceover",
+    "white glove content",
   ],
 };
 
@@ -35,9 +38,12 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#090a0f] text-foreground min-h-screen`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-[#09090b] text-foreground min-h-screen`}
       >
-        {children}
+        <AuthProvider>
+          {children}
+          <AuthModal />
+        </AuthProvider>
       </body>
     </html>
   );
